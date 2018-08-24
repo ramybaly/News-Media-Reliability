@@ -20,7 +20,9 @@ Here is the list of features categorized by the source from which they were extr
 To run the classification script, use a command-line argument of the following format:
 
 <p align="center">
+  ```
   python3 classification.py --task [0] --features [1]
+  ```
 </p>
 
 where [0] refers to the prediction task: fact, bias or bias3way (an aggregation of bias to a 3-point scale)
