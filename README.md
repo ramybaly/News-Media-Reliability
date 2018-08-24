@@ -32,12 +32,10 @@ where
 ## Citation
 For more details about the dataset, the features and the results, please refer to our EMNLP paper:
 
+```
 @InProceedings{baly:2018:EMNLP2018,
-  
   author    = {Baly, Ramy  and  Karadzhov, Georgi  and  Alexandrov, Dimitar and  Glass, James  and  Nakov, Preslav},
-  
-  title     = {Predicting Factuality of Reporting and Bias of News Media Sources},
-  
+  title     = {Predicting Factuality of Reporting and Bias of News Media Sources},  
   booktitle = {Proceedings of the Conference on Empirical Methods in Natural Language Processing},
   series = {EMNLP~'18},
   NOmonth     = {November},
@@ -45,3 +43,4 @@ For more details about the dataset, the features and the results, please refer t
   address   = {Brussels, Belgium},
   NOpublisher = {Association for Computational Linguistics}
 }
+```
