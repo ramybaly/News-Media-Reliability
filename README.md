@@ -29,12 +29,15 @@ where
 * [1] refers to the list of features (from the list above) that will be used to train the model. features must separated by "+" signs (example: has_wiki+has_twitter+title)
 
 
-For further details about the dataset, the features and the results, please refer to our EMNLP paper:
-
 ## Citation
+For more details about the dataset, the features and the results, please refer to our EMNLP paper:
+
 @InProceedings{baly:2018:EMNLP2018,
+  
   author    = {Baly, Ramy  and  Karadzhov, Georgi  and  Alexandrov, Dimitar and  Glass, James  and  Nakov, Preslav},
+  
   title     = {Predicting Factuality of Reporting and Bias of News Media Sources},
+  
   booktitle = {Proceedings of the Conference on Empirical Methods in Natural Language Processing},
   series = {EMNLP~'18},
   NOmonth     = {November},
