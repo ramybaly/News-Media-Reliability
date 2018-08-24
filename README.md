@@ -23,8 +23,9 @@ To run the classification script, use a command-line argument of the following f
 python3 classification.py --task [0] --features [1]
 ```
 
-where [0] refers to the prediction task: fact, bias or bias3way (an aggregation of bias to a 3-point scale)
-and [1] refers to the list of features (from the list above) that will be used to train the model. features must separated by "+" signs (example: has_wiki+has_twitter+title)
+where
+* [0] refers to the prediction task: fact, bias or bias3way (an aggregation of bias to a 3-point scale), and
+* [1] refers to the list of features (from the list above) that will be used to train the model. features must separated by "+" signs (example: has_wiki+has_twitter+title)
 
 
 For further details about the dataset, the features and the results, please refer to our EMNLP paper:
