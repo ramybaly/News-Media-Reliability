@@ -1,38 +1,6 @@
-# Factuality and Bias Prediction of News Sources
+# Factuality and Bias Prediction of News Media
 
-## Corpus
-The corpus is created by retrieving websites and factuality/bias labels from the Media Bias/Fact Check (MBFC) [website](http://mediabiasfactcheck.com/). The corpus is stored **data/corpus.csv**, which contains the following fields:
-* **source_url**: the URL to each website (example: http://www.who.int/en/)
-* **source_url_processed**: a shortened version of the *source_url* (example: who.int-en). These will be used as IDs to split the data into 5 folds of training and testing (in **data/splits.txt**) 
-* **URL**: the link to the page in the MBFC website analyzing the corresponding website (example: http://mediabiasfactcheck.com/world-health-organization-who/)
-* **fact**: the factuality label of each website (low, mixed, or high)
-* **bias**: the bias label of each website (extreme-right, right, center-right, center, center-left, left, extreme-left)
-
-## Features
-In addition to the corpus, we provide the different features that we used to obtain the results in our EMNLP paper, as well as a script to run the classification and re-generate the results.
-
-Here is the list of features categorized by the source from which they were extracted:
-* Traffic: *alexa_rank*
-* Twitter: *has_twitter*, *verified*, *created_at*, *has_location*, *url_match*, *description*, *counts*
-* Wikipedia: *has_wiki*, *wikicontent*, *wikisummary*, *wikicategories*, *wikitoc*
-* Articles: *title*, *body*
-
-Each of these features is stored as a numpy file in **data/features/**. The 1st column corresponds to the **source_url_processed** to ensure alignment with the corpus, and the last two columns correspond to the factuality and bias labels.
-
-## Classification
-To run the classification script, use a command-line argument of the following format:
-
-```
-python3 classification.py --task [0] --features [1]
-```
-
-where
-* [0] refers to the prediction task: fact, bias or bias3way (an aggregation of bias to a 3-point scale), and
-* [1] refers to the list of features (from the list above) that will be used to train the model. features must separated by "+" signs (example: has_wiki+has_twitter+title)
-
-
-## Citation
-For more details about the dataset, the features and the results, please refer to our EMNLP paper:
+This repository describes the work that was published in two papers (see citations below) on predicting the factuality and political bias in news media. Each paper proposes a different set of engineered features collected from sources of information related to the target media.
 
 ```
 @InProceedings{baly:2018:EMNLP2018,
@@ -46,3 +14,73 @@ For more details about the dataset, the features and the results, please refer t
   NOpublisher = {Association for Computational Linguistics}
 }
 ```
+
+```
+@InProceedings{baly:2018:EMNLP2018,
+  author    = {Baly, Ramy and Karadzhov, Georgi and An, Jisun and Kwak, Haewoon and Dinkov, Yoan and Ali, Ahmed and Glass, James and Nakov, Preslav},
+  title     = {What Was Written vs. Who Read It: News Media Profiling Using Text Analysis and Social Media Context},  
+  booktitle = {Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics},
+  series = {ACL~'20},
+  NOmonth     = {July},
+  year      = {2020},
+  NOpublisher = {Association for Computational Linguistics}
+}
+```
+
+## Corpus
+The corpus was created by retrieving websites along with their factuality and bias labels from the Media Bias/Fact Check (MBFC) [website](http://mediabiasfactcheck.com/).  Two versions of the corpus ("emnlp18" and "acl2020") can be found at **./data/{version}/corpus.tsv**, and contains the following fields:
+* **source_url**: the URL to each website (example: http://www.who.int/en/)
+* **source_url_normalized**: a shortened version of the *source_url* (example: who.int-en). These will be used as IDs to split the data into 5 folds of training and testing (in **data/splits.txt**)
+* **ref**: the link to the page in the MBFC website analyzing the corresponding website (example: http://mediabiasfactcheck.com/world-health-organization-who/)
+* **fact**: the factuality label of each website (low, mixed, or high)
+* **bias**: the bias label of each website (extreme-right, right, center-right, center, center-left, left, extreme-left)
+
+## Features
+In addition to the corpus, we provide the different features that we used to obtain the results in our papers. We also include the script that reads these features, train the SVM classifier and writes the results and predictions to file.  The features can be found at **./data/{version}/features/**.
+
+* For the *"emnlp18"* paper, the following features are used:
+** articles_body_glove
+** articles_title_glove
+** has_twitter
+** has_wikipedia
+** twitter_created_at
+** twitter_description
+** twitter_engagement
+** twitter_haslocation
+** twitter_urlmatch
+** twitter_verified
+** url_structure
+** wikipedia_categories
+** wikipedia_content
+** wikipedia_summary
+** wikipedia_toc
+
+* For the *"acl2020"* paper, the following features are used:
+** articles_body_bert
+** articles_title_bert
+** has_facebook
+** has_twitter
+** has_wikipedia
+** has_youtube
+** twitter_profile
+** twitter_followers
+** wikipedia_content
+** youtube_fulltext
+** youtube_nela
+** youtube_numerical
+** youtube_opensmile
+** youtube_subs
+
+Details about each feature can be found in the cited papers. Each of these features is stored as a JSON file, where each key correspond to a source_url (normalized), and its value is a list of numerical values representing this particular feature.
+
+## Classification
+To run the training script, use a command-line argument of the following format:
+
+```
+python3 train.py -tk [0] -f [1] -ds [2]
+```
+
+where
+* [0] is the task at hand: "fact" or "bias" prediction
+* [1] is the list of features (from the lists above) that will be used to train the model. features must be comma-separated.
+* [2] is the name of the dataset we are running the experiment on ("acl2020" or "emnlp18").
