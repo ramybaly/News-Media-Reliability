@@ -4,25 +4,25 @@ This repository describes the work that was published in two papers (see citatio
 
 ```
 @InProceedings{baly:2018:EMNLP2018,
-  author    = {Baly, Ramy  and  Karadzhov, Georgi  and  Alexandrov, Dimitar and  Glass, James  and  Nakov, Preslav},
-  title     = {Predicting Factuality of Reporting and Bias of News Media Sources},  
-  booktitle = {Proceedings of the Conference on Empirical Methods in Natural Language Processing},
-  series = {EMNLP~'18},
+  author      = {Baly, Ramy  and  Karadzhov, Georgi  and  Alexandrov, Dimitar and  Glass, James  and  Nakov, Preslav},
+  title       = {Predicting Factuality of Reporting and Bias of News Media Sources},  
+  booktitle   = {Proceedings of the Conference on Empirical Methods in Natural Language Processing},
+  series      = {EMNLP~'18},
   NOmonth     = {November},
-  year      = {2018},
-  address   = {Brussels, Belgium},
+  year        = {2018},
+  address     = {Brussels, Belgium},
   NOpublisher = {Association for Computational Linguistics}
 }
 ```
 
 ```
 @InProceedings{baly:2018:EMNLP2018,
-  author    = {Baly, Ramy and Karadzhov, Georgi and An, Jisun and Kwak, Haewoon and Dinkov, Yoan and Ali, Ahmed and Glass, James and Nakov, Preslav},
-  title     = {What Was Written vs. Who Read It: News Media Profiling Using Text Analysis and Social Media Context},  
-  booktitle = {Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics},
-  series = {ACL~'20},
+  author      = {Baly, Ramy and Karadzhov, Georgi and An, Jisun and Kwak, Haewoon and Dinkov, Yoan and Ali, Ahmed and Glass, James and Nakov, Preslav},
+  title       = {What Was Written vs. Who Read It: News Media Profiling Using Text Analysis and Social Media Context},  
+  booktitle   = {Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics},
+  series      = {ACL~'20},
   NOmonth     = {July},
-  year      = {2020},
+  year        = {2020},
   NOpublisher = {Association for Computational Linguistics}
 }
 ```
@@ -38,38 +38,38 @@ The corpus was created by retrieving websites along with their factuality and bi
 ## Features
 In addition to the corpus, we provide the different features that we used to obtain the results in our papers. We also include the script that reads these features, train the SVM classifier and writes the results and predictions to file.  The features can be found at **./data/{version}/features/**.
 
-* For the *"emnlp18"* paper, the following features are used:
-** articles_body_glove
-** articles_title_glove
-** has_twitter
-** has_wikipedia
-** twitter_created_at
-** twitter_description
-** twitter_engagement
-** twitter_haslocation
-** twitter_urlmatch
-** twitter_verified
-** url_structure
-** wikipedia_categories
-** wikipedia_content
-** wikipedia_summary
-** wikipedia_toc
+1. For the *"emnlp18"* paper, the following features are used:
+    - articles_body_glove
+    - articles_title_glove
+	- has_twitter
+	- has_wikipedia
+	- twitter_created_at
+	- twitter_description
+	- twitter_engagement
+    - twitter_haslocation
+	- twitter_urlmatch
+	- twitter_verified
+	- url_structure
+	- wikipedia_categories
+	- wikipedia_content
+	- wikipedia_summary
+	- wikipedia_toc
 
-* For the *"acl2020"* paper, the following features are used:
-** articles_body_bert
-** articles_title_bert
-** has_facebook
-** has_twitter
-** has_wikipedia
-** has_youtube
-** twitter_profile
-** twitter_followers
-** wikipedia_content
-** youtube_fulltext
-** youtube_nela
-** youtube_numerical
-** youtube_opensmile
-** youtube_subs
+2. For the *"acl2020"* paper, the following features are used:
+	- articles_body_bert
+	- articles_title_bert
+	- has_facebook
+	- has_twitter
+	- has_wikipedia
+	- has_youtube
+	- twitter_profile
+	- twitter_followers
+	- wikipedia_content
+	- youtube_fulltext
+	- youtube_nela
+	- youtube_numerical
+	- youtube_opensmile
+    - youtube_subs
 
 Details about each feature can be found in the cited papers. Each of these features is stored as a JSON file, where each key correspond to a source_url (normalized), and its value is a list of numerical values representing this particular feature.
 
