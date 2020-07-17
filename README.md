@@ -16,7 +16,7 @@ This repository describes the work that was published in two papers (see citatio
 ```
 
 ```
-@InProceedings{baly:2018:EMNLP2018,
+@InProceedings{baly:2020:ACL2020,
   author      = {Baly, Ramy and Karadzhov, Georgi and An, Jisun and Kwak, Haewoon and Dinkov, Yoan and Ali, Ahmed and Glass, James and Nakov, Preslav},
   title       = {What Was Written vs. Who Read It: News Media Profiling Using Text Analysis and Social Media Context},  
   booktitle   = {Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics},
