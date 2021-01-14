@@ -86,3 +86,61 @@ where
 * [2] is the name of the dataset we are running the experiment on ("acl2020" or "emnlp18").
 
 The performance metrics and output predictions will be stored in `./data/{version}/results/{task}_{features}/`
+
+#### Examples:
+* Example combine model training
+```
+python train.py --home_dir "/PATH_TO_REPO/News-Media-Reliability" \
+                  --features "articles_body_base_bert,articles_title_base_bert" \
+                  --task "fact" --type_training "combine"
+```
+OUTPUT:
+```
++---------------------+---------------------------------------------------+
+|       Field 1       |                      Field 2                      |
++---------------------+---------------------------------------------------+
+|         task        |                        fact                       |
+| classification mode |                 single classifier                 |
+|    type_training    |                      combine                      |
+|       features      | articles_body_base_bert, articles_title_base_bert |
++---------------------+---------------------------------------------------+
+01-14 03:07:20 __main__     INFO     Start training...
+01-14 03:07:20 __main__     INFO     Fold: 0
+01-14 03:07:54 __main__     INFO     Fold: 1
+01-14 03:08:25 __main__     INFO     Fold: 2
+01-14 03:08:57 __main__     INFO     Fold: 3
+01-14 03:09:28 __main__     INFO     Fold: 4
+01-14 03:09:58 __main__     INFO     Macro-F1: 58.820048565901054
+01-14 03:09:58 __main__     INFO     Accuracy: 65.07566938300349
+01-14 03:09:58 __main__     INFO     Flip Error-rate: 5.70430733410943
+01-14 03:09:58 __main__     INFO     MAE: 0.4062863795110594
+```
+
+* Example ensemble model training  
+NOTE to run this command first you need to run previous command with each of the features.
+```
+python train.py --home_dir "/PATH_TO_REPO/News-Media-Reliability" \
+                  --features "articles_body_base_bert,articles_title_base_bert" \
+                  --task "fact" --type_training "ensemble"
+```
+OUTPUT:
+```
++---------------------+---------------------------------------------------+
+|       Field 1       |                      Field 2                      |
++---------------------+---------------------------------------------------+
+|         task        |                        fact                       |
+| classification mode |                 single classifier                 |
+|    type_training    |                      ensemble                     |
+|       features      | articles_body_base_bert, articles_title_base_bert |
++---------------------+---------------------------------------------------+
+01-14 03:10:00 __main__     INFO     Start training...
+01-14 03:10:00 __main__     INFO     Fold: 0
+01-14 03:10:02 __main__     INFO     Fold: 1
+01-14 03:10:03 __main__     INFO     Fold: 2
+01-14 03:10:05 __main__     INFO     Fold: 3
+01-14 03:10:06 __main__     INFO     Fold: 4
+01-14 03:10:07 __main__     INFO     Macro-F1: 58.55282387414049
+01-14 03:10:07 __main__     INFO     Accuracy: 66.23981373690337
+01-14 03:10:07 __main__     INFO     Flip Error-rate: 3.7252619324796274
+01-14 03:10:07 __main__     INFO     MAE: 0.37485448195576254
+```
