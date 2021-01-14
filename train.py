@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import shutil
+from typing import Dict
 
 import numpy as np
 import pandas as pd
@@ -41,7 +42,7 @@ def calculate_metrics(actual, predicted):
 	Calculate performance metrics given the actual and predicted labels.
 	Returns the macro-F1 score, the accuracy, the flip error rate and the
 	mean absolute error (MAE).
-	The flip error rate is the percentage where an instance was predicted 
+	The flip error rate is the percentage where an instance was predicted
 	as the opposite label (i.e., left-vs-right or high-vs-low).
 	"""
 	# calculate macro-f1
@@ -58,6 +59,114 @@ def calculate_metrics(actual, predicted):
 	mae = mae[0] if not isinstance(mae, float) else mae
 
 	return f1, accuracy, flip_err, mae
+
+
+def train_combination_model(corpus_path: str, splits_file: str, feature_files: Dict[str, str]):
+	# read the dataset
+	df = pd.read_csv(corpus_path, sep="\t")
+
+	# create a dictionary: the keys are the media and the values are their corresponding labels (transformed to int)
+	labels = {df["source_url_normalized"][i]: label2int[args.task][df[args.task][i]] for i in range(df.shape[0])}
+
+	# load the evaluation splits
+	splits = json.load(open(splits_file, "r"))
+	num_folds = len(splits)
+
+	features = {feature: json.load(open(feature_path, "r")) for feature, feature_path in feature_files.items()}
+
+	# create placeholders where predictions will be cumulated over the different folds
+	all_urls = []
+	actual = np.zeros(df.shape[0], dtype=np.int)
+	predicted = np.zeros(df.shape[0], dtype=np.int)
+	probs = np.zeros((df.shape[0], args.num_labels), dtype=np.float)
+
+	i = 0
+
+	logger.info("Start training...")
+
+	for f in range(num_folds):
+		logger.info(f"Fold: {f}")
+
+		# get the training and testing media for the current fold
+		urls = {
+			"train": splits[str(f)]["train"],
+			"test": splits[str(f)]["test"],
+		}
+
+		all_urls.extend(splits[str(f)]["test"])
+
+		# initialize the features and labels matrices
+		X, y = {}, {}
+
+		# concatenate the different features/labels for the training sources
+		X["train"] = np.asmatrix([list(itertools.chain(*[features[feat][url] for feat in args.features])) for url in urls["train"]]).astype("float")
+		y["train"] = np.array([labels[url] for url in urls["train"]], dtype=np.int)
+
+		# concatenate the different features/labels for the testing sources
+		X["test"] = np.asmatrix([list(itertools.chain(*[features[feat][url] for feat in args.features])) for url in urls["test"]]).astype("float")
+		y["test"] = np.array([labels[url] for url in urls["test"]], dtype=np.int)
+
+		# normalize the features values
+		scaler = MinMaxScaler()
+		scaler.fit(X["train"])
+		X["train"] = scaler.transform(X["train"])
+		X["test"] = scaler.transform(X["test"])
+
+		# fine-tune the model
+		clf_cv = GridSearchCV(SVC(), scoring="f1_macro", cv=num_folds, n_jobs=4, param_grid=params_svm)
+		clf_cv.fit(X["train"], y["train"])
+
+		# train the final classifier using the best parameters during crossvalidation
+		clf = SVC(
+			kernel=clf_cv.best_estimator_.kernel,
+			gamma=clf_cv.best_estimator_.gamma,
+			C=clf_cv.best_estimator_.C,
+			probability=True
+		)
+		clf.fit(X["train"], y["train"])
+
+		# generate predictions
+		pred = clf.predict(X["test"])
+
+		# generate probabilites
+		prob = clf.predict_proba(X["test"])
+
+		# cumulate the actual and predicted labels, and the probabilities over the different folds.  then, move the index
+		actual[i: i + y["test"].shape[0]] = y["test"]
+		predicted[i: i + y["test"].shape[0]] = pred
+		probs[i: i + y["test"].shape[0], :] = prob
+		i += y["test"].shape[0]
+
+	# calculate the performance metrics on the whole set of predictions (5 folds all together)
+	results = calculate_metrics(actual, predicted)
+
+	# display the performance metrics
+	logger.info(f"Macro-F1: {results[0]}")
+	logger.info(f"Accuracy: {results[1]}")
+	logger.info(f"Flip Error-rate: {results[2]}")
+	logger.info(f"MAE: {results[3]}")
+
+	# map the actual and predicted labels to their categorical format
+	predicted = np.array([int2label[args.task][int(l)] for l in predicted])
+	actual = np.array([int2label[args.task][int(l)] for l in actual])
+
+	# create a dictionary: the keys are the media, and the values are their actual and predicted labels
+	predictions = {all_urls[i]: (actual[i], predicted[i]) for i in range(len(all_urls))}
+
+	# create a dataframe that contains the list of m actual labels, the predictions with probabilities.  then store it in the output directory
+	df_out = pd.DataFrame({"source_url": all_urls, "actual": actual, "predicted": predicted, int2label[args.task][0]: probs[:, 0], int2label[args.task][1]: probs[:, 1], int2label[args.task][2]: probs[:, 2],})
+	columns = ["source_url", "actual", "predicted"] + [int2label[args.task][i] for i in range(args.num_labels)]
+	df_out.to_csv(os.path.join(out_dir, "predictions.tsv"), index=False, columns=columns)
+
+	# write the experiment results in a tabular format
+	res = PrettyTable()
+	res.field_names = ["Macro-F1", "Accuracy", "Flip error-rate", "MAE"]
+	res.add_row(results)
+
+	# write the experiment summary and outcome into a text file and save it to the output directory
+	with open(os.path.join(out_dir, "results.txt"), "w") as f:
+		f.write(summary.get_string(title="Experiment Summary") + "\n")
+		f.write(res.get_string(title="Results"))
 
 
 def parse_arguments():
@@ -88,7 +197,7 @@ def parse_arguments():
         action="store_true",
         help="flag to whether the corresponding features file need to be deleted before re-computing",
     )
-	
+
     # Other command-line arguments
 	parser.add_argument(
         "-hd",
@@ -142,109 +251,11 @@ if __name__ == "__main__":
 	summary.add_row(["features", ", ".join(args.features)])
 	print(summary)
 
-	# read the dataset
-	df = pd.read_csv(os.path.join(args.home_dir, "data", args.dataset, "corpus.tsv"), sep="\t")
+	corpus_path = os.path.join(args.home_dir, "data", args.dataset, "corpus.tsv")
+	splits_path = os.path.join(args.home_dir, "data", args.dataset, f"splits.json")
 
-	# create a dictionary: the keys are the media and the values are their corresponding labels (transformed to int)
-	labels = {df["source_url_normalized"][i]: label2int[args.task][df[args.task][i]] for i in range(df.shape[0])}
+	# create the features dictionary: each key corresponds to a feature type, and its value is the pre-computed feature file
+	features_files = {feature: os.path.join(args.home_dir, "data", args.dataset, "features", f"{feature}.json")
+					  for feature in args.features}
 
-	# load the evaluation splits
-	splits = json.load(open(os.path.join(args.home_dir, "data", args.dataset, f"splits.json"), "r"))
-	num_folds = len(splits)
-
-	# create the features dictionary: each key corresponds to a feature type, and its value is the pre-computed features dictionary
-	features = {feature: json.load(open(os.path.join(args.home_dir, "data", args.dataset, "features", f"{feature}.json"), "r")) for feature in args.features}
-
-	# create placeholders where predictions will be cumulated over the different folds
-	all_urls = []
-	actual = np.zeros(df.shape[0], dtype=np.int)
-	predicted = np.zeros(df.shape[0], dtype=np.int)
-	probs = np.zeros((df.shape[0], args.num_labels), dtype=np.float)
-
-	i = 0
-
-	logger.info("Start training...")
-
-	for f in range(num_folds):
-		logger.info(f"Fold: {f}")
-
-		# get the training and testing media for the current fold
-		urls = {
-			"train": splits[str(f)]["train"],
-			"test": splits[str(f)]["test"],
-		}
-
-		all_urls.extend(splits[str(f)]["test"])
-
-		# initialize the features and labels matrices
-		X, y = {}, {}
-
-		# concatenate the different features/labels for the training sources
-		X["train"] = np.asmatrix([list(itertools.chain(*[features[feat][url] for feat in args.features])) for url in urls["train"]]).astype("float")
-		y["train"] = np.array([labels[url] for url in urls["train"]], dtype=np.int)
-
-		# concatenate the different features/labels for the testing sources
-		X["test"] = np.asmatrix([list(itertools.chain(*[features[feat][url] for feat in args.features])) for url in urls["test"]]).astype("float")
-		y["test"] = np.array([labels[url] for url in urls["test"]], dtype=np.int)
-
-		# normalize the features values
-		scaler = MinMaxScaler()
-		scaler.fit(X["train"])
-		X["train"] = scaler.transform(X["train"])
-		X["test"] = scaler.transform(X["test"])
-
-		# fine-tune the model
-		clf_cv = GridSearchCV(SVC(), scoring="f1_macro", cv=num_folds, n_jobs=4, param_grid=params_svm)
-		clf_cv.fit(X["train"], y["train"])
-
-		# train the final classifier using the best parameters during crossvalidation
-		clf = SVC(
-			kernel=clf_cv.best_estimator_.kernel,
-			gamma=clf_cv.best_estimator_.gamma,
-			C=clf_cv.best_estimator_.C,
-			probability=True
-		)
-		clf.fit(X["train"], y["train"])
-		
-		# generate predictions
-		pred = clf.predict(X["test"])
-		
-		# generate probabilites
-		prob = clf.predict_proba(X["test"])
-
-		# cumulate the actual and predicted labels, and the probabilities over the different folds.  then, move the index
-		actual[i: i + y["test"].shape[0]] = y["test"]
-		predicted[i: i + y["test"].shape[0]] = pred
-		probs[i: i + y["test"].shape[0], :] = prob
-		i += y["test"].shape[0]
-
-	# calculate the performance metrics on the whole set of predictions (5 folds all together)
-	results = calculate_metrics(actual, predicted)
-
-	# display the performance metrics
-	logger.info(f"Macro-F1: {results[0]}")
-	logger.info(f"Accuracy: {results[1]}")
-	logger.info(f"Flip Error-rate: {results[2]}")
-	logger.info(f"MAE: {results[3]}")
-
-	# map the actual and predicted labels to their categorical format
-	predicted = np.array([int2label[args.task][int(l)] for l in predicted])
-	actual = np.array([int2label[args.task][int(l)] for l in actual])
-
-	# create a dictionary: the keys are the media, and the values are their actual and predicted labels
-	predictions = {all_urls[i]: (actual[i], predicted[i]) for i in range(len(all_urls))}
-
-	# create a dataframe that contains the list of m actual labels, the predictions with probabilities.  then store it in the output directory
-	df_out = pd.DataFrame({"source_url": all_urls, "actual": actual, "predicted": predicted, int2label[args.task][0]: probs[:, 0], int2label[args.task][1]: probs[:, 1], int2label[args.task][2]: probs[:, 2],})
-	columns = ["source_url", "actual", "predicted"] + [int2label[args.task][i] for i in range(args.num_labels)]
-	df_out.to_csv(os.path.join(out_dir, "predictions.tsv"), index=False, columns=columns)
-
-	# write the experiment results in a tabular format
-	res = PrettyTable()
-	res.field_names = ["Macro-F1", "Accuracy", "Flip error-rate", "MAE"]
-	res.add_row(results)
-
-	# write the experiment summary and outcome into a text file and save it to the output directory
-	with open(os.path.join(out_dir, "results.txt"), "w") as f:
-		f.write(summary.get_string(title="Experiment Summary") + "\n")
-		f.write(res.get_string(title="Results"))
+	train_combination_model(corpus_path, splits_path, features_files)
