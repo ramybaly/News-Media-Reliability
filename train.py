@@ -1,25 +1,23 @@
 # -*- coding: utf-8 -*-
-import os
-import sys
-import json
-import pickle
-import shutil
-import logging
 import argparse
 import itertools
-import collections
-import pandas as pd
-from sklearn.svm import SVC
-from prettytable import PrettyTable
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import confusion_matrix, f1_score, accuracy_score
-
+import json
+import logging
+import os
+import shutil
 
 import numpy as np
+import pandas as pd
+from prettytable import PrettyTable
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.svm import SVC
+
 np.random.seed(16)
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # setup the logging environment
