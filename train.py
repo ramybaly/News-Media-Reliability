@@ -49,9 +49,12 @@ def load_json(file_path):
 def load_prediction_file(file_path):
 	with open(file_path, 'r') as f:
 		csv_reader = csv.DictReader(f)
-		data = {row['source_url']: [float(row['low']), float(row['mixed']), float(row['high'])]
-				for row in csv_reader}
-
+		if args.task == 'fact':
+			data = {row['source_url']: [float(row['low']), float(row['mixed']), float(row['high'])]
+					for row in csv_reader}
+		else:
+			data = {row['source_url']: [float(row['left']), float(row['center']), float(row['right'])]
+					for row in csv_reader}
 	return data
 
 
@@ -370,7 +373,7 @@ if __name__ == "__main__":
 		for feature in args.features:
 			feature_folder = f'{args.task}_{feature}'
 			if not feature_folder in os.listdir(result_dir):
-				raise ValueError("Feature '{feature_folder}' was not generated.Please run the code in 'combine' type_training for generating it.")
+				raise ValueError(F"Feature '{feature_folder}' was not generated.Please run the code in 'combine' type_training for generating it.")
 
 			if 'predictions.tsv' not in os.listdir(os.path.join(result_dir, feature_folder)):
 				raise ValueError(f"Missing 'predictions.tsv' file for '{feature_folder}' in {result_dir}")
