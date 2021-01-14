@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import argparse
+import csv
 import itertools
 import json
 import logging
@@ -10,7 +11,7 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 from prettytable import PrettyTable
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.svm import SVC
@@ -41,6 +42,15 @@ int2label = {
 def load_json(file_path):
 	with open(file_path, 'r') as f:
 		data = json.load(f)
+
+	return data
+
+
+def load_prediction_file(file_path):
+	with open(file_path, 'r') as f:
+		csv_reader = csv.DictReader(f)
+		data = {row['source_url']: [float(row['low']), float(row['mixed']), float(row['high'])]
+				for row in csv_reader}
 
 	return data
 
@@ -169,7 +179,7 @@ def train_model(splits: Dict[str, Dict[str, List[str]]],
 	return results
 
 
-def train_combination_model(corpus_path: str, splits_file: str, feature_files: Dict[str, str]):
+def train_combined_model(corpus_path: str, splits_file: str, feature_files: Dict[str, str]):
 	# read the dataset
 	df = pd.read_csv(corpus_path, sep="\t")
 
@@ -184,6 +194,51 @@ def train_combination_model(corpus_path: str, splits_file: str, feature_files: D
 	loaded_features = {}
 	for feature, feature_file in feature_files.items():
 		loaded_features[feature] = load_json(feature_file)
+
+	results = train_model(splits, loaded_features, labels)
+
+	# write the experiment results in a tabular format
+	res = PrettyTable()
+	res.field_names = ["Macro-F1", "Accuracy", "Flip error-rate", "MAE"]
+	res.add_row(results)
+
+	# write the experiment summary and outcome into a text file and save it to the output directory
+	with open(os.path.join(out_dir, "results.txt"), "w") as f:
+		f.write(summary.get_string(title="Experiment Summary") + "\n")
+		f.write(res.get_string(title="Results"))
+
+
+def train_ensemble_model(corpus_path: str, splits_file: str, feature_files: Dict[str, str]):
+	"""Uses the results from previously trained SVM classifier's probabilities for the three classes
+	with different features.
+
+	Example:
+	Let say you have two features - A, B. To use them in the ensemble training first you need to 
+	train SVM classifier with each of the features (separately). The model will save for each of
+	the records three probabilities for each of the classes:
+
+		|source_url      | actual | predicted | low | mixed |high |
+		| -------------- | ------ | --------- | --- | ----- |---- |
+		|allthatsfab.com | mixed  | high      | 0.07| 0.22  | 0.69|
+
+	Args:
+		corpus_path (str): [description]
+		splits_file (str): [description]
+		feature_files (Dict[str, str]): [description]
+	"""
+	# read the dataset
+	df = pd.read_csv(corpus_path, sep="\t")
+
+	# create a dictionary: the keys are the media and the values are their corresponding labels (transformed to int)
+	df['labels'] = df[args.task].apply(lambda x: label2int[args.task][x])
+	labels = dict(df[['source_url_normalized', 'labels']].values.tolist())
+
+	# load the evaluation splits
+	splits = load_json(splits_file)
+
+	loaded_features = {}
+	for feature, feature_file in feature_files.items():
+		loaded_features[feature] = load_prediction_file(feature_file)
 
 	results = train_model(splits, loaded_features, labels)
 
@@ -250,6 +305,14 @@ def parse_arguments():
 		help="the number of classes of the given task",
 	)
 
+	parser.add_argument(
+		"-tt",
+		"--type_training",
+		type=str,
+		default="combine",
+		help="Indicates what type of model training to do. Possible values are: 'combine', 'ensemble'",
+	)
+
 	return parser.parse_args()
 
 
@@ -262,29 +325,58 @@ if __name__ == "__main__":
 		raise ValueError("No Features are specified")
 
 	# create the list of features sorted alphabetically
-	args.features = sorted([feature for feature in args.features.split(",")])
-
-	# specify the output directory where the results will be stored
-	out_dir = os.path.join(args.home_dir, "data", args.dataset, f"results", f"{args.task}_{','.join(args.features)}")
-
-	# remove the output directory (if it already exists and args.clear_cache was set to TRUE)
-	shutil.rmtree(out_dir) if args.clear_cache and os.path.exists(out_dir) else None
-
-	# create the output directory
-	os.makedirs(out_dir, exist_ok=True)
+	args.features = sorted([feature.strip() for feature in args.features.split(",")])
 
 	# display the experiment summary in a tabular format
 	summary = PrettyTable()
 	summary.add_row(["task", args.task])
 	summary.add_row(["classification mode", "single classifier"])
+	summary.add_row(["type_training", args.type_training])
 	summary.add_row(["features", ", ".join(args.features)])
 	print(summary)
 
 	corpus_path = os.path.join(args.home_dir, "data", args.dataset, "corpus.tsv")
-	splits_path = os.path.join(args.home_dir, "data", args.dataset, f"splits.json")
+	splits_file = os.path.join(args.home_dir, "data", args.dataset, f"splits.json")
 
-	# create the features dictionary: each key corresponds to a feature type, and its value is the pre-computed feature file
-	features_files = {feature: os.path.join(args.home_dir, "data", args.dataset, "features", f"{feature}.json")
-					  for feature in args.features}
+	if args.type_training == "combine":
+		# specify the output directory where the results will be stored
+		out_dir = os.path.join(args.home_dir, "data", args.dataset, f"results", f"{args.task}_{','.join(args.features)}")
 
-	train_combination_model(corpus_path, splits_path, features_files)
+		# remove the output directory (if it already exists and args.clear_cache was set to TRUE)
+		shutil.rmtree(out_dir) if args.clear_cache and os.path.exists(out_dir) else None
+
+		# create the output directory
+		os.makedirs(out_dir, exist_ok=True)
+
+		feature_files = {feature: os.path.join(args.home_dir, "data", args.dataset, "features", f"{feature}.json")
+						 for feature in args.features}
+
+		train_combined_model(corpus_path, splits_file, feature_files)
+
+	elif args.type_training == "ensemble":
+		# specify the output directory where the results will be stored
+		out_dir = os.path.join(args.home_dir, "data", args.dataset, 'results', f'ensemble_{args.task}_' + ','.join(args.features))
+
+		# remove the output directory (if it already exists and args.clear_cache was set to TRUE)
+		shutil.rmtree(out_dir) if args.clear_cache and os.path.exists(out_dir) else None
+
+		# create the output directory
+		os.makedirs(out_dir, exist_ok=True)
+
+		result_dir = os.path.join(args.home_dir, "data", args.dataset, f"results")
+		features = [f'{args.task}_{feature}' for feature in args.features]
+
+		features_files = {}
+		for feature in args.features:
+			feature_folder = f'{args.task}_{feature}'
+			if not feature_folder in os.listdir(result_dir):
+				raise ValueError("Feature '{feature_folder}' was not generated.Please run the code in 'combine' type_training for generating it.")
+
+			if 'predictions.tsv' not in os.listdir(os.path.join(result_dir, feature_folder)):
+				raise ValueError(f"Missing 'predictions.tsv' file for '{feature_folder}' in {result_dir}")
+
+			features_files[feature] = os.path.join(result_dir, feature_folder, 'predictions.tsv')
+
+		train_ensemble_model(corpus_path, splits_file, features_files)
+	else:
+		raise ValueError(f"Unsupported type_training ('{args.type_training}'). Supported ones are 'combine' or 'ensemble'!")
