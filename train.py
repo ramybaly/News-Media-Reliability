@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import shutil
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
@@ -37,6 +37,14 @@ int2label = {
 	"bias": {0: "left", 1: "center", 2: "right"},
 }
 
+
+def load_json(file_path):
+	with open(file_path, 'r') as f:
+		data = json.load(f)
+
+	return data
+
+
 def calculate_metrics(actual, predicted):
 	"""
 	Calculate performance metrics given the actual and predicted labels.
@@ -61,26 +69,17 @@ def calculate_metrics(actual, predicted):
 	return f1, accuracy, flip_err, mae
 
 
-def train_combination_model(corpus_path: str, splits_file: str, feature_files: Dict[str, str]):
-	# read the dataset
-	df = pd.read_csv(corpus_path, sep="\t")
-
-	# create a dictionary: the keys are the media and the values are their corresponding labels (transformed to int)
-	labels = {df["source_url_normalized"][i]: label2int[args.task][df[args.task][i]] for i in range(df.shape[0])}
-
-	# load the evaluation splits
-	splits = json.load(open(splits_file, "r"))
-	num_folds = len(splits)
-
-	features = {feature: json.load(open(feature_path, "r")) for feature, feature_path in feature_files.items()}
-
+def train_model(splits: Dict[str, Dict[str, List[str]]],
+				features: Dict[str, Dict[str, List[float]]],
+			    labels: Dict[str, str]):
 	# create placeholders where predictions will be cumulated over the different folds
 	all_urls = []
-	actual = np.zeros(df.shape[0], dtype=np.int)
-	predicted = np.zeros(df.shape[0], dtype=np.int)
-	probs = np.zeros((df.shape[0], args.num_labels), dtype=np.float)
+	actual = np.zeros(len(labels), dtype=np.int)
+	predicted = np.zeros(len(labels), dtype=np.int)
+	probs = np.zeros((len(labels), args.num_labels), dtype=np.float)
 
 	i = 0
+	num_folds = len(splits)
 
 	logger.info("Start training...")
 
@@ -99,11 +98,13 @@ def train_combination_model(corpus_path: str, splits_file: str, feature_files: D
 		X, y = {}, {}
 
 		# concatenate the different features/labels for the training sources
-		X["train"] = np.asmatrix([list(itertools.chain(*[features[feat][url] for feat in args.features])) for url in urls["train"]]).astype("float")
+		X["train"] = np.asmatrix([list(itertools.chain(*[v[url] for _, v in features.items()]))
+								 for url in urls["train"]]).astype("float")
 		y["train"] = np.array([labels[url] for url in urls["train"]], dtype=np.int)
 
 		# concatenate the different features/labels for the testing sources
-		X["test"] = np.asmatrix([list(itertools.chain(*[features[feat][url] for feat in args.features])) for url in urls["test"]]).astype("float")
+		X["test"] = np.asmatrix([list(itertools.chain(*[v[url] for _, v in features.items()]))
+								for url in urls["test"]]).astype("float")
 		y["test"] = np.array([labels[url] for url in urls["test"]], dtype=np.int)
 
 		# normalize the features values
@@ -154,9 +155,37 @@ def train_combination_model(corpus_path: str, splits_file: str, feature_files: D
 	predictions = {all_urls[i]: (actual[i], predicted[i]) for i in range(len(all_urls))}
 
 	# create a dataframe that contains the list of m actual labels, the predictions with probabilities.  then store it in the output directory
-	df_out = pd.DataFrame({"source_url": all_urls, "actual": actual, "predicted": predicted, int2label[args.task][0]: probs[:, 0], int2label[args.task][1]: probs[:, 1], int2label[args.task][2]: probs[:, 2],})
+	df_out = pd.DataFrame({
+		"source_url": all_urls,
+		"actual": actual,
+		"predicted": predicted,
+		int2label[args.task][0]: probs[:, 0],
+		int2label[args.task][1]: probs[:, 1],
+		int2label[args.task][2]: probs[:, 2],
+	})
 	columns = ["source_url", "actual", "predicted"] + [int2label[args.task][i] for i in range(args.num_labels)]
 	df_out.to_csv(os.path.join(out_dir, "predictions.tsv"), index=False, columns=columns)
+
+	return results
+
+
+def train_combination_model(corpus_path: str, splits_file: str, feature_files: Dict[str, str]):
+	# read the dataset
+	df = pd.read_csv(corpus_path, sep="\t")
+
+	# create a dictionary: the keys are the media and the values are their corresponding labels (transformed to int)
+	df['labels'] = df[args.task].apply(lambda x: label2int[args.task][x])
+	labels = dict(df[['source_url_normalized', 'labels']].values.tolist())
+
+	# load the evaluation splits
+	splits = load_json(splits_file)
+
+	# create the features dictionary: each key corresponds to a feature type, and its value is the pre-computed features dictionary
+	loaded_features = {}
+	for feature, feature_file in feature_files.items():
+		loaded_features[feature] = load_json(feature_file)
+
+	results = train_model(splits, loaded_features, labels)
 
 	# write the experiment results in a tabular format
 	res = PrettyTable()
