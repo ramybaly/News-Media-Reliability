@@ -40,6 +40,8 @@ int2label = {
 	"bias": {0: "left", 1: "center", 2: "right"},
 }
 
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 def load_json(file_path):
 	with open(file_path, 'r') as f:
@@ -296,13 +298,6 @@ def parse_arguments():
 
     # Other command-line arguments
 	parser.add_argument(
-        "-hd",
-        "--home_dir",
-        type=str,
-        default="/Users/baly/Projects/News-Media-Reliability",
-        help="the directory that contains the project files"
-    )
-	parser.add_argument(
         "-ds",
         "--dataset",
         type=str,
@@ -348,12 +343,12 @@ if __name__ == "__main__":
 	summary.add_row(["features", ", ".join(args.features)])
 	print(summary)
 
-	corpus_path = os.path.join(args.home_dir, "data", args.dataset, "corpus.tsv")
-	splits_file = os.path.join(args.home_dir, "data", args.dataset, f"splits.json")
+	corpus_path = os.path.join(PROJECT_DIR, "data", args.dataset, "corpus.tsv")
+	splits_file = os.path.join(PROJECT_DIR, "data", args.dataset, f"splits.json")
 
 	if args.type_training == "combine":
 		# specify the output directory where the results will be stored
-		out_dir = os.path.join(args.home_dir, "data", args.dataset, f"results", f"{args.task}_{','.join(args.features)}")
+		out_dir = os.path.join(PROJECT_DIR, "data", args.dataset, f"results", f"{args.task}_{','.join(args.features)}")
 
 		# remove the output directory (if it already exists and args.clear_cache was set to TRUE)
 		shutil.rmtree(out_dir) if args.clear_cache and os.path.exists(out_dir) else None
@@ -361,14 +356,14 @@ if __name__ == "__main__":
 		# create the output directory
 		os.makedirs(out_dir, exist_ok=True)
 
-		feature_files = {feature: os.path.join(args.home_dir, "data", args.dataset, "features", f"{feature}.json")
+		feature_files = {feature: os.path.join(PROJECT_DIR, "data", args.dataset, "features", f"{feature}.json")
 						 for feature in args.features}
 
 		train_combined_model(corpus_path, splits_file, feature_files)
 
 	elif args.type_training == "ensemble":
 		# specify the output directory where the results will be stored
-		out_dir = os.path.join(args.home_dir, "data", args.dataset, 'results', f'ensemble_{args.task}_' + ','.join(args.features))
+		out_dir = os.path.join(PROJECT_DIR, "data", args.dataset, 'results', f'ensemble_{args.task}_' + ','.join(args.features))
 
 		# remove the output directory (if it already exists and args.clear_cache was set to TRUE)
 		shutil.rmtree(out_dir) if args.clear_cache and os.path.exists(out_dir) else None
@@ -376,7 +371,7 @@ if __name__ == "__main__":
 		# create the output directory
 		os.makedirs(out_dir, exist_ok=True)
 
-		result_dir = os.path.join(args.home_dir, "data", args.dataset, f"results")
+		result_dir = os.path.join(PROJECT_DIR, "data", args.dataset, f"results")
 		features = [f'{args.task}_{feature}' for feature in args.features]
 
 		features_files = {}
