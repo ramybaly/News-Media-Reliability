@@ -90,9 +90,8 @@ The performance metrics and output predictions will be stored in `./data/{versio
 #### Examples:
 * Example combine model training
 ```
-python train.py --home_dir "/PATH_TO_REPO/News-Media-Reliability" \
-                  --features "articles_body_base_bert,articles_title_base_bert" \
-                  --task "fact" --type_training "combine"
+python train.py --features "articles_body_base_bert,articles_title_base_bert" \
+				--task "fact" --type_training "combine"
 ```
 OUTPUT:
 ```
@@ -119,9 +118,8 @@ OUTPUT:
 * Example ensemble model training  
 NOTE to run this command first you need to run previous command with each of the features.
 ```
-python train.py --home_dir "/PATH_TO_REPO/News-Media-Reliability" \
-                  --features "articles_body_base_bert,articles_title_base_bert" \
-                  --task "fact" --type_training "ensemble"
+python train.py --features "articles_body_base_bert,articles_title_base_bert" \
+				--task "fact" --type_training "ensemble"
 ```
 OUTPUT:
 ```
