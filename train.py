@@ -122,11 +122,12 @@ def train_model(splits: Dict[str, Dict[str, List[str]]],
 								for url in urls["test"]]).astype("float")
 		y["test"] = np.array([labels[url] for url in urls["test"]], dtype=np.int)
 
-		# normalize the features values
-		scaler = MinMaxScaler()
-		scaler.fit(X["train"])
-		X["train"] = scaler.transform(X["train"])
-		X["test"] = scaler.transform(X["test"])
+		if args.normalize_features:
+			# normalize the features values
+			scaler = MinMaxScaler()
+			scaler.fit(X["train"])
+			X["train"] = scaler.transform(X["train"])
+			X["test"] = scaler.transform(X["test"])
 
 		# fine-tune the model
 		clf_cv = GridSearchCV(SVC(), scoring="f1_macro", cv=num_folds, n_jobs=4, param_grid=params_svm)
@@ -286,6 +287,12 @@ def parse_arguments():
         action="store_true",
         help="flag to whether the corresponding features file need to be deleted before re-computing",
     )
+	parser.add_argument(
+		'-nf',
+		'--normalize_features',
+		action='store_true',
+		help='flag whether to normalize input features. In the case of ensemble it\'s better to be false'
+	)
 
     # Other command-line arguments
 	parser.add_argument(
@@ -337,6 +344,7 @@ if __name__ == "__main__":
 	summary.add_row(["task", args.task])
 	summary.add_row(["classification mode", "single classifier"])
 	summary.add_row(["type_training", args.type_training])
+	summary.add_row(["normalize_features", args.normalize_features])
 	summary.add_row(["features", ", ".join(args.features)])
 	print(summary)
 
