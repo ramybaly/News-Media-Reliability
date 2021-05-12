@@ -10,11 +10,14 @@ from typing import Dict, List
 
 import numpy as np
 import pandas as pd
+import mlflow
 from prettytable import PrettyTable
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.svm import SVC
+
+from datetime import datetime
 
 np.random.seed(16)
 
@@ -41,6 +44,17 @@ int2label = {
 }
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def log_params(args):
+	params = {
+		'dataset': args.dataset,
+		'task': args.task,
+		'type_training': args.type_training,
+		'normalize_features': args.normalize_features,
+		'features': ", ".join(args.features)
+	}
+	mlflow.log_params(params)
 
 
 def load_json(file_path):
@@ -83,6 +97,11 @@ def calculate_metrics(actual, predicted):
 	mae = sum([abs(actual[i] - predicted[i]) for i in range(len(actual))]) / len(actual)
 	mae = mae[0] if not isinstance(mae, float) else mae
 
+
+	mlflow.log_metric('f1', f1)
+	mlflow.log_metric('accuracy', accuracy)
+	mlflow.log_metric('flip_error', flip_err)
+	mlflow.log_metric('mae', mae)
 	return f1, accuracy, flip_err, mae
 
 
@@ -203,7 +222,9 @@ def train_combined_model(corpus_path: str, splits_file: str, feature_files: Dict
 	for feature, feature_file in feature_files.items():
 		loaded_features[feature] = load_json(feature_file)
 
-	results = train_model(splits, loaded_features, labels)
+	with mlflow.start_run():
+		log_params(args)
+		results = train_model(splits, loaded_features, labels)
 
 	# write the experiment results in a tabular format
 	res = PrettyTable()
@@ -221,7 +242,7 @@ def train_ensemble_model(corpus_path: str, splits_file: str, feature_files: Dict
 	with different features.
 
 	Example:
-	Let say you have two features - A, B. To use them in the ensemble training first you need to 
+	Let say you have two features - A, B. To use them in the ensemble training first you need to
 	train SVM classifier with each of the features (separately). The model will save for each of
 	the records three probabilities for each of the classes:
 
@@ -248,7 +269,9 @@ def train_ensemble_model(corpus_path: str, splits_file: str, feature_files: Dict
 	for feature, feature_file in feature_files.items():
 		loaded_features[feature] = load_prediction_file(feature_file)
 
-	results = train_model(splits, loaded_features, labels)
+	with mlflow.start_run():
+		log_params(args)
+		results = train_model(splits, loaded_features, labels)
 
 	# write the experiment results in a tabular format
 	res = PrettyTable()
@@ -362,11 +385,13 @@ if __name__ == "__main__":
 		train_combined_model(corpus_path, splits_file, feature_files)
 
 	elif args.type_training == "ensemble":
+		now = datetime.now()
+
 		# specify the output directory where the results will be stored
-		out_dir = os.path.join(PROJECT_DIR, "data", args.dataset, 'results', f'ensemble_{args.task}_' + ','.join(args.features))
+		out_dir = os.path.join(PROJECT_DIR, "data", args.dataset, 'results', f"ensemble_{args.task}_{','.join(args.features)}_{now.strftime('%Y%m%d')}")
 
 		# remove the output directory (if it already exists and args.clear_cache was set to TRUE)
-		shutil.rmtree(out_dir) if args.clear_cache and os.path.exists(out_dir) else None
+		# shutil.rmtree(out_dir) if args.clear_cache and os.path.exists(out_dir) else None
 
 		# create the output directory
 		os.makedirs(out_dir, exist_ok=True)

@@ -5,7 +5,7 @@ This repository describes the work that was published in two papers (see citatio
 ```
 @InProceedings{baly:2018:EMNLP2018,
   author      = {Baly, Ramy  and  Karadzhov, Georgi  and  Alexandrov, Dimitar and  Glass, James  and  Nakov, Preslav},
-  title       = {Predicting Factuality of Reporting and Bias of News Media Sources},  
+  title       = {Predicting Factuality of Reporting and Bias of News Media Sources},
   booktitle   = {Proceedings of the Conference on Empirical Methods in Natural Language Processing},
   series      = {EMNLP~'18},
   NOmonth     = {November},
@@ -18,7 +18,7 @@ This repository describes the work that was published in two papers (see citatio
 ```
 @InProceedings{baly:2020:ACL2020,
   author      = {Baly, Ramy and Karadzhov, Georgi and An, Jisun and Kwak, Haewoon and Dinkov, Yoan and Ali, Ahmed and Glass, James and Nakov, Preslav},
-  title       = {What Was Written vs. Who Read It: News Media Profiling Using Text Analysis and Social Media Context},  
+  title       = {What Was Written vs. Who Read It: News Media Profiling Using Text Analysis and Social Media Context},
   booktitle   = {Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics},
   series      = {ACL~'20},
   NOmonth     = {July},
@@ -115,7 +115,7 @@ OUTPUT:
 01-14 03:09:58 __main__     INFO     MAE: 0.4062863795110594
 ```
 
-* Example ensemble model training  
+* Example ensemble model training
 NOTE to run this command first you need to run previous command with each of the features.
 ```
 python train.py --features "articles_body_base_bert,articles_title_base_bert" \
@@ -142,3 +142,16 @@ OUTPUT:
 01-14 03:10:07 __main__     INFO     Flip Error-rate: 3.7252619324796274
 01-14 03:10:07 __main__     INFO     MAE: 0.37485448195576254
 ```
+
+#### Evaluating experiments
+Each experiment saves logging data with mlflow. To visualize the experiments you need to start MlFlow UI by running command inside the project dir
+```
+>>> mlflow ui
+
+Expected output:
+[2021-05-12 10:36:35 +0300] [106694] [INFO] Starting gunicorn 20.1.0
+[2021-05-12 10:36:35 +0300] [106694] [INFO] Listening at: http://127.0.0.1:5000 (106694)
+[2021-05-12 10:36:35 +0300] [106694] [INFO] Using worker: sync
+```
+
+After successful start you can access all logged experiments at "http://127.0.0.1:5000" (Default MlFlow setting)

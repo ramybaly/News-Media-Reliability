@@ -4,6 +4,9 @@
 # VSCode dir
 .vscode/
 
+# MlFlow result dir
+mlruns/
+
 # Project results folder
 data/acl2020/results/*
 
